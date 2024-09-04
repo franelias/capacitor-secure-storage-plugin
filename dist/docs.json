@@ -1,0 +1,133 @@
+{
+  "api": {
+    "name": "SecureStoragePluginPlugin",
+    "slug": "securestoragepluginplugin",
+    "docs": "",
+    "tags": [],
+    "methods": [
+      {
+        "name": "get",
+        "signature": "(options: GetOptions) => Promise<{ value: string; }>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "GetOptions"
+          }
+        ],
+        "returns": "Promise<{ value: string; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [
+          "GetOptions"
+        ],
+        "slug": "get"
+      },
+      {
+        "name": "set",
+        "signature": "(options: SetOptions) => Promise<{ value: boolean; }>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "SetOptions"
+          }
+        ],
+        "returns": "Promise<{ value: boolean; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [
+          "SetOptions"
+        ],
+        "slug": "set"
+      },
+      {
+        "name": "remove",
+        "signature": "(options: RemoveOptions) => Promise<{ value: boolean; }>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "RemoveOptions"
+          }
+        ],
+        "returns": "Promise<{ value: boolean; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [
+          "RemoveOptions"
+        ],
+        "slug": "remove"
+      },
+      {
+        "name": "clear",
+        "signature": "() => Promise<{ value: boolean; }>",
+        "parameters": [],
+        "returns": "Promise<{ value: boolean; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "clear"
+      },
+      {
+        "name": "keys",
+        "signature": "() => Promise<{ value: string[]; }>",
+        "parameters": [],
+        "returns": "Promise<{ value: string[]; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "keys"
+      },
+      {
+        "name": "getPlatform",
+        "signature": "() => Promise<{ value: string; }>",
+        "parameters": [],
+        "returns": "Promise<{ value: string; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "getplatform"
+      }
+    ],
+    "properties": []
+  },
+  "interfaces": [],
+  "enums": [],
+  "typeAliases": [
+    {
+      "name": "GetOptions",
+      "slug": "getoptions",
+      "docs": "",
+      "types": [
+        {
+          "text": "{\n  key: string\n}",
+          "complexTypes": []
+        }
+      ]
+    },
+    {
+      "name": "SetOptions",
+      "slug": "setoptions",
+      "docs": "",
+      "types": [
+        {
+          "text": "{\n  key: string\n  value: string\n}",
+          "complexTypes": []
+        }
+      ]
+    },
+    {
+      "name": "RemoveOptions",
+      "slug": "removeoptions",
+      "docs": "",
+      "types": [
+        {
+          "text": "{\n  key: string\n}",
+          "complexTypes": []
+        }
+      ]
+    }
+  ],
+  "pluginConfigs": []
+}
