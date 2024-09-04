@@ -9,6 +9,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 @CapacitorPlugin(name = "SecureStoragePlugin")
@@ -52,8 +53,12 @@ public class SecureStoragePluginPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void keys(PluginCall call) {
-        call.resolve(this._keys());
+    public void keys(PluginCall call) throws Exception {
+        try {
+            call.resolve(this._keys());
+        } catch (Exception exception) {
+            call.reject(exception.getMessage(), exception);
+        }
     }
 
     @PluginMethod
@@ -85,8 +90,8 @@ public class SecureStoragePluginPlugin extends Plugin {
         call.resolve(this._getPlatform());
     }
 
-    public JSObject _set(String key, String value) {
-        this.passwordStorageHelper.setData(key, value.getBytes(Charset.forName("UTF-8")));
+    public JSObject _set(String key, String value) throws Exception {
+        this.passwordStorageHelper.setData(key, value.getBytes(StandardCharsets.UTF_8));
         JSObject ret = new JSObject();
         ret.put("value", true);
         return ret;
@@ -104,7 +109,7 @@ public class SecureStoragePluginPlugin extends Plugin {
     public JSObject _get(String key) throws Exception {
         byte[] buffer = this.passwordStorageHelper.getData(key);
         if (buffer != null) {
-            String value = new String(buffer, Charset.forName("UTF-8"));
+            String value = new String(buffer, StandardCharsets.UTF_8);
             JSObject ret = new JSObject();
             ret.put("value", value);
             return ret;
@@ -113,21 +118,21 @@ public class SecureStoragePluginPlugin extends Plugin {
         }
     }
 
-    public JSObject _keys() {
+    public JSObject _keys() throws Exception {
         String[] keys = this.passwordStorageHelper.keys();
         JSObject ret = new JSObject();
         ret.put("value", JSArray.from(keys));
         return ret;
     }
 
-    public JSObject _remove(String key) {
+    public JSObject _remove(String key) throws Exception {
         this.passwordStorageHelper.remove(key);
         JSObject ret = new JSObject();
         ret.put("value", true);
         return ret;
     }
 
-    public JSObject _clear() {
+    public JSObject _clear() throws Exception {
         this.passwordStorageHelper.clear();
         JSObject ret = new JSObject();
         ret.put("value", true);

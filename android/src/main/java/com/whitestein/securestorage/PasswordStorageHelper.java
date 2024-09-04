@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.security.KeyChain;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyInfo;
 import android.security.keystore.KeyProperties;
@@ -24,9 +23,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.UnrecoverableEntryException;
 import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Calendar;
@@ -47,14 +44,14 @@ public class PasswordStorageHelper {
 
     private PasswordStorageImpl passwordStorage = null;
 
+    public boolean isInitialized = false;
+
     public PasswordStorageHelper(Context context) {
         if (android.os.Build.VERSION.SDK_INT < 18) {
             passwordStorage = new PasswordStorageHelper_SDK16();
         } else {
             passwordStorage = new PasswordStorageHelper_SDK18();
         }
-
-        boolean isInitialized = false;
 
         try {
             isInitialized = passwordStorage.init(context);
@@ -68,36 +65,51 @@ public class PasswordStorageHelper {
         }
     }
 
-    public void setData(String key, byte[] data) {
+    public void setData(String key, byte[] data) throws Exception {
+        checkInitialized();
+
         passwordStorage.setData(key, data);
     }
 
-    public byte[] getData(String key) {
+    public byte[] getData(String key) throws Exception {
+        checkInitialized();
+
         return passwordStorage.getData(key);
     }
 
-    public String[] keys() { return passwordStorage.keys(); }
+    public String[] keys() throws Exception{
+        checkInitialized();
+        return passwordStorage.keys();
+    }
 
-    public void remove(String key) {
+    public void remove(String key) throws Exception{
+        checkInitialized();
         passwordStorage.remove(key);
     }
 
-    public void clear() {
+    public void clear() throws Exception {
+        checkInitialized();
         passwordStorage.clear();
+    }
+
+    private void checkInitialized() throws Exception {
+        if (!isInitialized) {
+            throw new Exception("KeyStore not initialized");
+        }
     }
 
     private interface PasswordStorageImpl {
         boolean init(Context context);
 
-        void setData(String key, byte[] data);
+        void setData(String key, byte[] data) throws Exception;
 
-        byte[] getData(String key);
+        byte[] getData(String key) throws Exception;
 
-        String[] keys();
+        String[] keys() throws Exception;
 
-        void remove(String key);
+        void remove(String key) throws Exception;
 
-        void clear();
+        void clear() throws Exception;
     }
 
     private static class PasswordStorageHelper_SDK16 implements PasswordStorageImpl {
@@ -115,7 +127,7 @@ public class PasswordStorageHelper {
                 return;
             Editor editor = preferences.edit();
             editor.putString(key, Base64.encodeToString(data, Base64.DEFAULT));
-            editor.commit();
+            editor.apply();
         }
 
         @Override
@@ -129,26 +141,25 @@ public class PasswordStorageHelper {
         @Override
         public String[] keys() {
             Set<String> keySet = preferences.getAll().keySet();
-            return keySet.toArray(new String[keySet.size()]);
+            return keySet.toArray(new String[0]);
         }
 
         @Override
         public void remove(String key) {
             Editor editor = preferences.edit();
             editor.remove(key);
-            editor.commit();
+            editor.apply();
         }
 
         @Override
         public void clear() {
             Editor editor = preferences.edit();
             editor.clear();
-            editor.commit();
+            editor.apply();
         }
     }
 
     private static class PasswordStorageHelper_SDK18 implements PasswordStorageImpl {
-
         private static final String KEY_ALGORITHM_RSA = "RSA";
 
         private static final String KEYSTORE_PROVIDER_ANDROID_KEYSTORE = "AndroidKeyStore";
@@ -157,8 +168,6 @@ public class PasswordStorageHelper {
         private SharedPreferences preferences;
         private String alias = null;
 
-        @SuppressWarnings("deprecation")
-        @SuppressLint({"NewApi", "TrulyRandom"})
         @Override
         public boolean init(Context context) {
             preferences = context.getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE);
@@ -182,6 +191,7 @@ public class PasswordStorageHelper {
                     }
                 }
             } catch (Exception ex) {
+                Log.e(LOG_TAG, "Error retrieving private/public keys from KeyStore", ex);
                 return false;
             }
 
@@ -212,7 +222,7 @@ public class PasswordStorageHelper {
             }
 
             // Initialize a KeyPair generator using the the intended algorithm (in this example, RSA
-            // and the KeyStore. This example uses the AndroidKeyStore.
+            // and the KeyStore). This example uses the AndroidKeyStore.
             KeyPairGenerator kpGenerator;
             try {
                 kpGenerator = KeyPairGenerator.getInstance(KEY_ALGORITHM_RSA, KEYSTORE_PROVIDER_ANDROID_KEYSTORE);
@@ -220,93 +230,79 @@ public class PasswordStorageHelper {
                 // Generate private/public keys
                 kpGenerator.generateKeyPair();
             } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | NoSuchProviderException e) {
-                e.printStackTrace();
+                Log.e(LOG_TAG, "Error creating private/public keys", e);
+                return false;
             }
 
             // Check if device support Hardware-backed keystore
             try {
-                boolean isHardwareBackedKeystoreSupported;
-                if (android.os.Build.VERSION.SDK_INT < 23) {
-                    isHardwareBackedKeystoreSupported = KeyChain.isBoundKeyAlgorithm(KeyProperties.KEY_ALGORITHM_RSA);
-                } else {
+                boolean isInsideSecureHardware = false;
+                if (android.os.Build.VERSION.SDK_INT >23) {
                     PrivateKey privateKey = (PrivateKey) ks.getKey(alias, null);
-                    KeyChain.isBoundKeyAlgorithm(KeyProperties.KEY_ALGORITHM_RSA);
                     KeyFactory keyFactory = KeyFactory.getInstance(privateKey.getAlgorithm(), "AndroidKeyStore");
                     KeyInfo keyInfo = keyFactory.getKeySpec(privateKey, KeyInfo.class);
-                    isHardwareBackedKeystoreSupported = keyInfo.isInsideSecureHardware();
+                    isInsideSecureHardware = keyInfo.isInsideSecureHardware();
                 }
-                Log.d(LOG_TAG, "Hardware-Backed Keystore Supported: " + isHardwareBackedKeystoreSupported);
-            } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException | InvalidKeySpecException | NoSuchProviderException e) {
+                Log.d(LOG_TAG, "Hardware-Backed Keystore Supported: " + isInsideSecureHardware);
+            } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException | InvalidKeySpecException | NoSuchProviderException ignored) {
             }
 
             return true;
         }
 
         @Override
-        public void setData(String key, byte[] data) {
+        public void setData(String key, byte[] data) throws Exception {
             KeyStore ks = null;
-            try {
-                ks = KeyStore.getInstance(KEYSTORE_PROVIDER_ANDROID_KEYSTORE);
+            ks = KeyStore.getInstance(KEYSTORE_PROVIDER_ANDROID_KEYSTORE);
 
-                ks.load(null);
-                if (ks.getCertificate(alias) == null) return;
+            ks.load(null);
+            if (ks.getCertificate(alias) == null) return;
 
-                PublicKey publicKey = ks.getCertificate(alias).getPublicKey();
+            PublicKey publicKey = ks.getCertificate(alias).getPublicKey();
 
-                if (publicKey == null) {
-                    Log.d(LOG_TAG, "Error: Public key was not found in Keystore");
-                    return;
-                }
-
-                String value = encrypt(publicKey, data);
-
-                Editor editor = preferences.edit();
-                editor.putString(key, value);
-                editor.commit();
-            } catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException
-                    | IllegalBlockSizeException | BadPaddingException | NoSuchProviderException
-                    | InvalidKeySpecException | KeyStoreException | CertificateException | IOException e) {
-                e.printStackTrace();
+            if (publicKey == null) {
+                Log.d(LOG_TAG, "Error: Public key was not found in Keystore");
+                return;
             }
+
+            String value = encrypt(publicKey, data);
+
+            Editor editor = preferences.edit();
+            editor.putString(key, value);
+            editor.apply();
+
         }
 
         @Override
-        public byte[] getData(String key) {
+        public byte[] getData(String key) throws Exception {
             KeyStore ks = null;
-            try {
-                ks = KeyStore.getInstance(KEYSTORE_PROVIDER_ANDROID_KEYSTORE);
-                ks.load(null);
-                PrivateKey privateKey = (PrivateKey) ks.getKey(alias, null);
-                return decrypt(privateKey, preferences.getString(key, null));
-            } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException
-                    | UnrecoverableEntryException | InvalidKeyException | NoSuchPaddingException
-                    | IllegalBlockSizeException | BadPaddingException | NoSuchProviderException e) {
-               e.printStackTrace();
-            }
-            return null;
+            ks = KeyStore.getInstance(KEYSTORE_PROVIDER_ANDROID_KEYSTORE);
+            ks.load(null);
+            PrivateKey privateKey = (PrivateKey) ks.getKey(alias, null);
+            return decrypt(privateKey, preferences.getString(key, null));
         }
 
         @Override
         public String[] keys() {
             Set<String> keySet = preferences.getAll().keySet();
-            return keySet.toArray(new String[keySet.size()]);
+            return keySet.toArray(new String[0]);
         }
 
         @Override
         public void remove(String key) {
             Editor editor = preferences.edit();
             editor.remove(key);
-            editor.commit();
+            editor.apply();
         }
 
         @Override
         public void clear() {
             Editor editor = preferences.edit();
             editor.clear();
-            editor.commit();
+            editor.apply();
         }
 
-        private static int KEY_LENGTH = 2048;
+        private static final int KEY_LENGTH = 2048;
 
         @SuppressLint("TrulyRandom")
         private static String encrypt(PublicKey encryptionKey, byte[] data) throws NoSuchAlgorithmException,
@@ -331,7 +327,7 @@ public class PasswordStorageHelper {
                     try {
                         byteArrayOutputStream.write(tmpData);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        Log.e(LOG_TAG,"error on encrypt write", e);
                     }
                     position += limit;
                 }
@@ -364,7 +360,7 @@ public class PasswordStorageHelper {
                     try {
                         byteArrayOutputStream.write(tmpData);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        Log.e(LOG_TAG,"error on decrypt write", e);
                     }
                     position += limit;
                 }
