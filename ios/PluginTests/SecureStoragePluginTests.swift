@@ -1,15 +1,17 @@
 import XCTest
 import Capacitor
 import SwiftKeychainWrapper
+import KeychainSwift
 
 @testable import Plugin
 
 class PluginTests: XCTestCase {
     
-    func setupDedicatedWrapper() -> KeychainWrapper {
-        let wrapper = KeychainWrapper.init(serviceName: "cap_sec")
-        wrapper.removeAllKeys()
-        return wrapper
+    func setupDedicatedWrapper() -> KeychainSwift {
+        let keychain = KeychainSwift(keyPrefix: "cap_sec")
+        
+        keychain.clear()
+        return keychain
     }
     
     func testSet() {
@@ -28,7 +30,7 @@ class PluginTests: XCTestCase {
                 let resultValue = result!.data?["value"] as? Bool
                 XCTAssertTrue(resultValue ?? false)
                 // dedicated keychain wrapper
-                let dedicatedValue = keychainwrapper.string(forKey: key)
+                let dedicatedValue = keychainwrapper.get(key)
                 XCTAssertEqual(valueModified, dedicatedValue)
                 // standard keychain wrapper should not be modified
                 let standardValue = KeychainWrapper.standard.string(forKey: key)
@@ -63,9 +65,10 @@ class PluginTests: XCTestCase {
     func testGetCopy() {
         let key = "key"
         let value = "Hello, World!"
-        let keychainwrapper = setupDedicatedWrapper()
-        
-        KeychainWrapper.standard.set(value, forKey: key)
+        let keychain = setupDedicatedWrapper()
+        let keychainWrapper = KeychainWrapper.init(serviceName: "cap_sec")
+        keychainWrapper.removeAllKeys()
+        keychainWrapper.set(value, forKey: key)
         
         let plugin = SecureStoragePlugin()
         
@@ -74,9 +77,9 @@ class PluginTests: XCTestCase {
             ], success: { (result, call) in
                 let resultValue = result!.data?["value"] as? String
                 XCTAssertEqual(value, resultValue)
-                let dedicatedValue = keychainwrapper.string(forKey: key)
+                let dedicatedValue = keychain.get(key)
                 XCTAssertEqual(value, dedicatedValue)
-                let standardValue = KeychainWrapper.standard.string(forKey: key)
+                let standardValue = keychainWrapper.string(forKey: key)
                 XCTAssertNil(standardValue)
         }, error: { (err) in
             XCTFail("Error shouldn't have been called")
@@ -95,7 +98,6 @@ class PluginTests: XCTestCase {
         let keychainwrapper = setupDedicatedWrapper()
         keychainwrapper.set(value, forKey: key)
         keychainwrapper.set(value, forKey: key2)
-
 
         let callOne = CAPPluginCall(callbackId: "test", options: [:],
                                     success: { (result, call) in
@@ -145,10 +147,12 @@ class PluginTests: XCTestCase {
         let key = "key"
         let value = "Hello, World!"
         // prefill dedicated keychain wrapper
-        let keychainwrapper = setupDedicatedWrapper()
-        keychainwrapper.set(value, forKey: key)
+        let keychain = setupDedicatedWrapper()
+        keychain.set(value, forKey: key)
         // prefill standard keychain wrapper
-        KeychainWrapper.standard.set(value, forKey: key)
+        
+        let keychainWrapper = KeychainWrapper.init(serviceName: "cap_sec")
+        keychainWrapper.set(value, forKey: key)
         
         let plugin = SecureStoragePlugin()
         
@@ -158,10 +162,10 @@ class PluginTests: XCTestCase {
                 let resultValue = result!.data?["value"] as? Bool
                 XCTAssertTrue(resultValue ?? false)
                 // dedicated keychain wrapper
-                let dedicatedValue = keychainwrapper.string(forKey: key)
+                let dedicatedValue = keychain.get(key)
                 XCTAssertNil(dedicatedValue)
                 // standard keychain wrapper
-                let standardValueRemoved = KeychainWrapper.standard.string(forKey: key)
+                let standardValueRemoved = keychainWrapper.string(forKey: key)
                 XCTAssertNil(standardValueRemoved)
         }, error: { (err) in
             XCTFail("Error shouldn't have been called")
@@ -186,7 +190,7 @@ class PluginTests: XCTestCase {
                 let resultValue = result!.data?["value"] as? Bool
                 XCTAssertTrue(resultValue ?? false)
                 // dedicated keychain wrapper
-                let dedicatedValue = keychainwrapper.string(forKey: key)
+                let dedicatedValue = keychainwrapper.get(key)
                 XCTAssertNil(dedicatedValue)
         }, error: { (err) in
             XCTFail("Error shouldn't have been called")
@@ -201,12 +205,17 @@ class PluginTests: XCTestCase {
         let standardOnlyKey = "standard key"
         let standardOnlyValue = "standard value"
         // prefill dedicated keychain wrapper
-        let keychainwrapper = setupDedicatedWrapper()
-        keychainwrapper.set(value, forKey: key)
-        keychainwrapper.set(value + "2", forKey: key + "2")
+        
+        let keychain = setupDedicatedWrapper()
+        
+        let keychainwrapper = KeychainWrapper.init(serviceName: "cap_sec")
+        keychainwrapper.removeAllKeys()
+        
+        XCTAssertTrue(keychain.set(value, forKey: key))
+        XCTAssertTrue(keychain.set(value + "2", forKey: key + "2"))
         // prefill standard keychain wrapper
-        KeychainWrapper.standard.set(value, forKey: key)
-        KeychainWrapper.standard.set(standardOnlyValue, forKey: standardOnlyKey)
+        XCTAssertTrue(keychainwrapper.set(value, forKey: key))
+        XCTAssertTrue(keychainwrapper.set(standardOnlyValue, forKey: standardOnlyKey))
         
         let plugin = SecureStoragePlugin()
         
@@ -216,14 +225,14 @@ class PluginTests: XCTestCase {
                 let resultValue = result!.data?["value"] as? Bool
                 XCTAssertTrue(resultValue ?? false)
                 // key present in dedicated and standard wrapper removed
-                let dedicatedValue = keychainwrapper.string(forKey: key)
+                let dedicatedValue = keychain.get(key)
                 XCTAssertNil(dedicatedValue)
-                let dedicatedValue2 = keychainwrapper.string(forKey: key + "2")
+                let dedicatedValue2 = keychain.get(key + "2")
                 XCTAssertNil(dedicatedValue2)
-                let standardValue = KeychainWrapper.standard.string(forKey: key)
+                let standardValue = keychainwrapper.string(forKey: key)
                 XCTAssertNil(standardValue)
                 // key only defined in standard wrapper still present
-                let standardValue2 = KeychainWrapper.standard.string(forKey: standardOnlyKey)
+                let standardValue2 = keychainwrapper.string(forKey: standardOnlyKey)
                 XCTAssertEqual(standardOnlyValue, standardValue2)
         }, error: { (err) in
             XCTFail("Error shouldn't have been called")
