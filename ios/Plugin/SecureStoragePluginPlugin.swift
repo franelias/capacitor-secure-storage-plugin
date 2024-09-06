@@ -42,12 +42,8 @@ public class SecureStoragePlugin: CAPPlugin {
         if (hasValueDedicated && !hasValueNewKeychain) {
             valueNewKeychain = keychainwrapper.string(forKey: key) ?? ""
             let saveSuccessful = keychain.set(valueNewKeychain ?? "", forKey: key , withAccess: KeychainSwiftAccessOptions.accessibleAfterFirstUnlock)
-            
-            let removeDedicatedSuccessful: Bool = keychainwrapper.removeObject(forKey: key)
-
-            if (!saveSuccessful || !removeDedicatedSuccessful) {
-                call.reject("error")
-                return
+            if (saveSuccessful) {
+                keychainwrapper.removeObject(forKey: key)
             }
         }
         
