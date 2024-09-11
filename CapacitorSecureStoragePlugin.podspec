@@ -14,5 +14,6 @@ Pod::Spec.new do |s|
   s.ios.deployment_target  = '13.0'
   s.dependency 'Capacitor'
   s.dependency 'SwiftKeychainWrapper'
+  s.dependency 'KeychainSwift', '~> 24.0'
   s.swift_version = '5.1'
 end
