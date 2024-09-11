@@ -19,6 +19,7 @@
 		50ADFFA42020D75100D50D53 /* Capacitor.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50ADFFA52020D75100D50D53 /* Capacitor.framework */; };
 		50ADFFA82020EE4F00D50D53 /* SecureStoragePluginPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 50ADFFA72020EE4F00D50D53 /* SecureStoragePluginPlugin.m */; };
 		50E1A94820377CB70090CE1A /* SecureStoragePluginPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E1A94720377CB70090CE1A /* SecureStoragePluginPlugin.swift */; };
+		A19FB8FE2C91B87E0086DE7C /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A19FB8FD2C91B87E0086DE7C /* KeychainSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +74,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A19FB8FE2C91B87E0086DE7C /* KeychainSwift in Frameworks */,
 				50ADFFA42020D75100D50D53 /* Capacitor.framework in Frameworks */,
 				03FC29A292ACC40490383A1F /* Pods_Plugin.framework in Frameworks */,
 			);
@@ -218,6 +220,9 @@
 			dependencies = (
 			);
 			name = Plugin;
+			packageProductDependencies = (
+				A19FB8FD2C91B87E0086DE7C /* KeychainSwift */,
+			);
 			productName = Plugin;
 			productReference = 50ADFF88201F53D600D50D53 /* Plugin.framework */;
 			productType = "com.apple.product-type.framework";
@@ -766,6 +771,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A19FB8FD2C91B87E0086DE7C /* KeychainSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A19FB8FB2C888EEF0086DE7C /* XCRemoteSwiftPackageReference "keychain-swift" */;
+			productName = KeychainSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 50ADFF7F201F53D600D50D53 /* Project object */;
 }
